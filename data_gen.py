@@ -86,8 +86,6 @@ class DataGen(object):
         with open(self.annotation_path, 'r', encoding='utf-8') as ann_file:
             lines = ann_file.readlines()
             random.shuffle(lines)
-            print('total images = ', len(lines))
-            error_imgs = 0
             ture_imgs = 0
             false_imgs = 0
             for l in lines:
@@ -103,20 +101,16 @@ class DataGen(object):
                 try:
                     img_bw, word = self.read_data(img_path, lex)
                     if img_bw is None or word is None:
-                        error_imgs += 1
-                        print('nums of error images = ', error_imgs)
                         continue
 
                     width = img_bw.shape[-1]
 
                     # TODO:resize if > 320
                     b_idx = min(width, self.bucket_max_width)
-                    if width > self.bucket_max_width:
-                        print('image width->', width, self.bucket_max_width)
                     bs = self.bucket_data[b_idx].append(img_bw, word, os.path.join(self.data_root, img_path))
                     if bs >= batch_size:
                         ture_imgs += bs
-                        print('b_idx = ', b_idx)
+                        # print('batch length = ', b_idx)
                         b = self.bucket_data[b_idx].flush_out(self.bucket_specs,
                                                               valid_target_length=valid_target_len,
                                                               go_shift=1)
@@ -132,7 +126,7 @@ class DataGen(object):
                     msg = traceback.format_exc()
                     print(msg)
                     pass
-            print('batch_size of true and false images->', ture_imgs, false_imgs)
+            print('images of ture / false / total = ', ture_imgs, false_imgs, len(lines))
         self.clear()
 
     def read_data(self, img_path, lex):
@@ -147,29 +141,26 @@ class DataGen(object):
             if w < 10 and h < 10:
                 return None, None
             aspect_ratio = w / h
-            if aspect_ratio < 5:
-                self.min_list[0] = aspect_ratio
-                self.min_list[1] = w
-                self.min_list[2] = h
-            if aspect_ratio > 5:
-                self.max_list[0] = aspect_ratio
-                self.max_list[1] = w
-                self.max_list[2] = h
+            # if aspect_ratio < 5:
+            #     self.min_list[0] = aspect_ratio
+            #     self.min_list[1] = w
+            #     self.min_list[2] = h
+            # if aspect_ratio > 5:
+            #     self.max_list[0] = aspect_ratio
+            #     self.max_list[1] = w
+            #     self.max_list[2] = h
 
             if aspect_ratio < float(self.bucket_min_width) / self.image_height:  # img_width_range[0]
                 img = img.resize(
                     (self.bucket_min_width, self.image_height),Image.ANTIALIAS)
-                print('小于')
             elif aspect_ratio > float(
                     self.bucket_max_width) / self.image_height:    # img_width_range[1]
                 img = img.resize(
                     (self.bucket_max_width, self.image_height),Image.ANTIALIAS)
-                print('大于')
             elif h != self.image_height:
                 img = img.resize(
                     (int(aspect_ratio * self.image_height), self.image_height),
                     Image.ANTIALIAS)
-                print('reahape')
 
             # w, h = img.size
             # print('after: w, h = ', w, h)
